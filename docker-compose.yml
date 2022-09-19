@@ -1,0 +1,61 @@
+version: '3'
+
+#这里我要与dnmp里面的hyperf通信所有改成同一个网段（改成跟自己的hyperf的php环境的一样就好）
+networks:
+  consul_net:
+    external:
+     name: dnmp-pro_extnetwork
+
+#如果不需要的直接用下面这个
+#networks:
+# consul_net:
+
+services:
+  consul1:
+    image: consul:${CONSUL_VERSION}
+    container_name: consul_node1
+    restart: always
+    command: agent -server -bootstrap-expect=3 -node=consul_node1 -bind=0.0.0.0 -client=0.0.0.0 -datacenter=dc1  #需要加入验证时打开 -config-dir=/home/acl.json
+    volumes:
+      - ${CONSUL_DIR}/consul/acl.json:/home/acl.json
+    networks:
+      - consul_net
+
+  consul2:
+    image: consul:${CONSUL_VERSION}
+    container_name: consul_node2
+    restart: always
+    command: agent -server -retry-join=consul_node1 -node=consul_node2 -bind=0.0.0.0 -client=0.0.0.0 -datacenter=dc1 #需要加入验证时打开-config-dir=/home/acl.json
+    volumes:
+      - ${CONSUL_DIR}/consul/acl.json:/home/acl.json
+    depends_on:
+      - consul1
+    networks:
+      - consul_net
+
+  consul3:
+    image: consul:${CONSUL_VERSION}
+    container_name: consul_node3
+    restart: always
+    command: agent -server -retry-join=consul_node1 -node=consul_node3 -bind=0.0.0.0 -client=0.0.0.0 -datacenter=dc1 #需要加入验证时打开-config-dir=/home/acl.json
+    volumes:
+      - ${CONSUL_DIR}/consul/acl.json:/home/acl.json
+    depends_on:
+      - consul1
+    networks:
+      - consul_net
+
+  consul4:
+    image: consul:${CONSUL_VERSION}
+    container_name: consul_node4
+    restart: always
+    command: agent -retry-join=consul_node1 -node=consul_node4 -bind=0.0.0.0 -client=0.0.0.0 -datacenter=dc1 -ui #需要加入验证时打开-config-dir=/home/acl_client.json
+    volumes:
+      - ${CONSUL_DIR}/consul/acl_client.json:/home/acl_client.json
+    ports:
+      - ${CLIENT_PORT}:8500
+    depends_on:
+      - consul2
+      - consul3
+    networks:
+      - consul_net
